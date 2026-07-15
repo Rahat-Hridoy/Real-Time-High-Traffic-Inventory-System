@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
+/* ── Google Font is loaded in index.html ── */
 body {
-  background-color: #020617; /* bg-slate-950 */
-  color: #f1f5f9; /* text-slate-100 */
+  background-color: #020617; /* slate-950 */
+  color: #f1f5f9;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
@@ -11,10 +12,10 @@ body {
 }
 
 body::selection {
-  background-color: rgba(168, 85, 247, 0.3); /* selection:bg-purple-500/30 */
+  background-color: rgba(168, 85, 247, 0.3);
 }
 
-/* Glassmorphism custom styles */
+/* ── Glassmorphism panels ── */
 .glass-panel {
   background: rgba(15, 23, 42, 0.55);
   backdrop-filter: blur(20px);
@@ -39,27 +40,105 @@ body::selection {
   transform: translateY(-2px);
 }
 
-/* Custom scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(168, 85, 247, 0.3);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(168, 85, 247, 0.6);
+/* ── Login card ── */
+.login-card {
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    0 0 0 1px rgba(168, 85, 247, 0.08),
+    0 24px 64px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
+/* ── Navbar ── */
+.navbar {
+  background: rgba(2, 6, 23, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 1px 0 rgba(168, 85, 247, 0.08);
+}
+
+/* ── User dropdown menu ── */
+.dropdown-menu {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: dropdown-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dropdown-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+/* ── Product card ── */
+.product-card {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.product-card:hover {
+  border-color: rgba(168, 85, 247, 0.35);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(168, 85, 247, 0.12);
+  transform: translateY(-3px);
+}
+
+/* ── Animated background blobs ── */
+.blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.25;
+  animation: blob-drift 18s ease-in-out infinite;
+}
+.blob-1 {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, #7c3aed 0%, transparent 70%);
+  top: -120px; left: -120px;
+  animation-delay: 0s;
+}
+.blob-2 {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, #4f46e5 0%, transparent 70%);
+  bottom: -80px; right: -80px;
+  animation-delay: -6s;
+}
+.blob-3 {
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, #db2777 0%, transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  animation-delay: -12s;
+}
+@keyframes blob-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(30px, -30px) scale(1.05); }
+  66%       { transform: translate(-20px, 20px) scale(0.95); }
+}
+.blob-3 {
+  animation-name: blob-drift-center;
+}
+@keyframes blob-drift-center {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  33%       { transform: translate(-50%, -50%) translate(20px, -20px) scale(1.1); }
+  66%       { transform: translate(-50%, -50%) translate(-15px, 15px) scale(0.9); }
+}
+
+/* ── Custom scrollbars ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.4); }
+::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(168, 85, 247, 0.6); }
+
+/* ── Pulsing border for active reservations ── */
 @keyframes pulse-border {
-  0%, 100% { border-color: rgba(168, 85, 247, 0.3); }
-  50% { border-color: rgba(168, 85, 247, 0.8); }
+  0%, 100% { border-color: rgba(245, 158, 11, 0.25); }
+  50%       { border-color: rgba(245, 158, 11, 0.7);  }
 }
-
-.pulsing-border {
-  animation: pulse-border 2s infinite;
-}
+.pulsing-border { animation: pulse-border 2s ease-in-out infinite; }

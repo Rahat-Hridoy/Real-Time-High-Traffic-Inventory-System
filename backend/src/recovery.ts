@@ -9,7 +9,7 @@ import { broadcastStockUpdate } from './socket';
  */
 export async function recoverExpiredStock(): Promise<number[]> {
   const transaction = await sequelize.transaction();
-  const txId = transaction.id;
+  const txId = (transaction as any).id;
   
   try {
     // 1. Query all pending reservations where expires_at has passed, using LOCK.UPDATE

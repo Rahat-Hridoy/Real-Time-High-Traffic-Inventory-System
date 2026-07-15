@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import sequelize from '../../config/db';
-import { Drop, Reservation } from '../../models';
+import { Drop, Reservation, User, Purchase } from '../../models';
 import { Transaction } from 'sequelize';
 import { broadcastStockUpdate } from '../socket';
 
@@ -17,11 +17,11 @@ router.post('/reserve', async (req: Request, res: Response, next: NextFunction) 
 
   // Open transaction
   const transaction = await sequelize.transaction();
-  console.log(`[RESERVE][TX:${transaction.id}] Transaction started.`);
+  console.log(`[RESERVE][TX:${(transaction as any).id}] Transaction started.`);
 
   try {
     // 1. Set Row Level Security (RLS) context in the session
-    console.log(`[RESERVE][TX:${transaction.id}] Setting session user context to ${userId}`);
+    console.log(`[RESERVE][TX:${(transaction as any).id}] Setting session user context to ${userId}`);
     await sequelize.query('SET LOCAL app.current_user_id = :userId', {
       replacements: { userId: userId.toString() },
       transaction,
@@ -29,23 +29,23 @@ router.post('/reserve', async (req: Request, res: Response, next: NextFunction) 
     });
 
     // 2. Query target Drop using Pessimistic Lock (SELECT ... FOR UPDATE)
-    console.log(`[RESERVE][TX:${transaction.id}] Querying Drop ID ${dropId} with FOR UPDATE lock...`);
+    console.log(`[RESERVE][TX:${(transaction as any).id}] Querying Drop ID ${dropId} with FOR UPDATE lock...`);
     const drop = await Drop.findByPk(dropId, {
       transaction,
       lock: Transaction.LOCK.UPDATE
     });
 
     if (!drop) {
-      console.log(`[RESERVE][TX:${transaction.id}] Drop ID ${dropId} not found. Rolling back.`);
+      console.log(`[RESERVE][TX:${(transaction as any).id}] Drop ID ${dropId} not found. Rolling back.`);
       await transaction.rollback();
       return res.status(404).json({ error: 'DROP_NOT_FOUND', message: 'The requested drop does not exist.' });
     }
 
-    console.log(`[RESERVE][TX:${transaction.id}] Acquired lock on Drop ID ${dropId}. Current available stock: ${drop.available_stock}`);
+    console.log(`[RESERVE][TX:${(transaction as any).id}] Acquired lock on Drop ID ${dropId}. Current available stock: ${drop.available_stock}`);
 
     // 3. Validate stock levels
     if (drop.available_stock < 1) {
-      console.log(`[RESERVE][TX:${transaction.id}] Stock depleted (available=${drop.available_stock}). Throwing OUT_OF_STOCK and rolling back.`);
+      console.log(`[RESERVE][TX:${(transaction as any).id}] Stock depleted (available=${drop.available_stock}). Throwing OUT_OF_STOCK and rolling back.`);
       await transaction.rollback();
       return res.status(400).json({ error: 'OUT_OF_STOCK', message: 'This item is out of stock.' });
     }
@@ -53,7 +53,7 @@ router.post('/reserve', async (req: Request, res: Response, next: NextFunction) 
     // 4. Decrement available stock
     drop.available_stock -= 1;
     await drop.save({ transaction });
-    console.log(`[RESERVE][TX:${transaction.id}] Decremented stock by 1. New stock: ${drop.available_stock}`);
+    console.log(`[RESERVE][TX:${(transaction as any).id}] Decremented stock by 1. New stock: ${drop.available_stock}`);
 
     // 5. Create PENDING reservation record
     const expiresAt = new Date(Date.now() + 60000); // Expires in 60 seconds
@@ -64,11 +64,11 @@ router.post('/reserve', async (req: Request, res: Response, next: NextFunction) 
       expires_at: expiresAt
     }, { transaction });
 
-    console.log(`[RESERVE][TX:${transaction.id}] Created pending reservation ID ${reservation.id} expiring at ${expiresAt.toISOString()}`);
+    console.log(`[RESERVE][TX:${(transaction as any).id}] Created pending reservation ID ${reservation.id} expiring at ${expiresAt.toISOString()}`);
 
     // Commit transaction
     await transaction.commit();
-    console.log(`[RESERVE][TX:${transaction.id}] Transaction committed successfully.`);
+    console.log(`[RESERVE][TX:${(transaction as any).id}] Transaction committed successfully.`);
 
     // Broadcast updated stock count to all connected socket clients
     broadcastStockUpdate(Number(dropId), drop.available_stock);
@@ -88,13 +88,13 @@ router.post('/reserve', async (req: Request, res: Response, next: NextFunction) 
 
   } catch (error: any) {
     // Safely rollback
-    console.error(`[RESERVE][TX:${transaction.id}] Error encountered during reservation:`, error.message);
+    console.error(`[RESERVE][TX:${(transaction as any).id}] Error encountered during reservation:`, error.message);
     
     try {
       await transaction.rollback();
-      console.log(`[RESERVE][TX:${transaction.id}] Transaction rolled back safely.`);
+      console.log(`[RESERVE][TX:${(transaction as any).id}] Transaction rolled back safely.`);
     } catch (rollbackError: any) {
-      console.error(`[RESERVE][TX:${transaction.id}] Failed to rollback transaction:`, rollbackError.message);
+      console.error(`[RESERVE][TX:${(transaction as any).id}] Failed to rollback transaction:`, rollbackError.message);
     }
 
     // Handle foreign key constraint error (e.g. invalid user ID)
@@ -103,6 +103,147 @@ router.post('/reserve', async (req: Request, res: Response, next: NextFunction) 
     }
 
     return res.status(500).json({ error: 'SERVER_ERROR', message: 'An unexpected error occurred.' });
+  }
+});
+
+// 1. GET /api/drops - Fetch all drops
+router.get('/drops', async (req: Request, res: Response) => {
+  try {
+    const drops = await Drop.findAll({ order: [['id', 'ASC']] });
+    return res.json(drops);
+  } catch (error: any) {
+    console.error('[GET_DROPS] Failed to fetch drops:', error);
+    return res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to fetch drops.' });
+  }
+});
+
+// 2. POST /api/purchase - Simulate completing a purchase using reservation
+router.post('/purchase', async (req: Request, res: Response) => {
+  const { reservationId, userId } = req.body;
+
+  if (!reservationId || !userId) {
+    return res.status(400).json({ error: 'INVALID_INPUT', message: 'reservationId and userId are required.' });
+  }
+
+  console.log(`[PURCHASE] Start purchase request: user=${userId}, reservation=${reservationId}`);
+
+  const transaction = await sequelize.transaction();
+  console.log(`[PURCHASE][TX:${(transaction as any).id}] Transaction started.`);
+
+  try {
+    // Set RLS context in session
+    await sequelize.query('SET LOCAL app.current_user_id = :userId', {
+      replacements: { userId: userId.toString() },
+      transaction,
+      logging: false
+    });
+
+    // Find the reservation
+    const reservation = await Reservation.findByPk(reservationId, {
+      transaction,
+      lock: Transaction.LOCK.UPDATE
+    });
+
+    if (!reservation) {
+      console.log(`[PURCHASE][TX:${(transaction as any).id}] Reservation ID ${reservationId} not found (or restricted by RLS). Rolling back.`);
+      await transaction.rollback();
+      return res.status(404).json({ error: 'RESERVATION_NOT_FOUND', message: 'Reservation not found.' });
+    }
+
+    if (reservation.status !== 'PENDING') {
+      console.log(`[PURCHASE][TX:${(transaction as any).id}] Reservation status is ${reservation.status} (expected PENDING). Rolling back.`);
+      await transaction.rollback();
+      return res.status(400).json({ error: 'INVALID_RESERVATION_STATUS', message: `Reservation is already ${reservation.status}.` });
+    }
+
+    if (new Date() > new Date(reservation.expires_at)) {
+      console.log(`[PURCHASE][TX:${(transaction as any).id}] Reservation expired. Rolling back.`);
+      await transaction.rollback();
+      return res.status(400).json({ error: 'RESERVATION_EXPIRED', message: 'Reservation has expired.' });
+    }
+
+    // Set reservation to COMPLETED
+    reservation.status = 'COMPLETED';
+    await reservation.save({ transaction });
+
+    // Create a Purchase record
+    const purchase = await Purchase.create({
+      user_id: Number(userId),
+      drop_id: reservation.drop_id
+    }, { transaction });
+
+    await transaction.commit();
+    console.log(`[PURCHASE][TX:${(transaction as any).id}] Transaction committed. Purchase ID: ${purchase.id}`);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Purchase completed successfully.',
+      purchase: {
+        id: purchase.id,
+        user_id: purchase.user_id,
+        drop_id: purchase.drop_id,
+        createdAt: purchase.createdAt
+      }
+    });
+
+  } catch (error: any) {
+    console.error(`[PURCHASE][TX:${(transaction as any).id}] Error encountered during purchase:`, error.message);
+    try {
+      await transaction.rollback();
+    } catch (rollbackError: any) {
+      console.error(`[PURCHASE][TX:${(transaction as any).id}] Rollback failed:`, rollbackError.message);
+    }
+    return res.status(500).json({ error: 'SERVER_ERROR', message: 'An unexpected error occurred.' });
+  }
+});
+
+// 3. POST /api/users - Create or retrieve a user by username
+router.post('/users', async (req: Request, res: Response) => {
+  const { username } = req.body;
+  if (!username) {
+    return res.status(400).json({ error: 'INVALID_INPUT', message: 'username is required.' });
+  }
+
+  try {
+    const [user] = await User.findOrCreate({
+      where: { username }
+    });
+    return res.status(200).json(user);
+  } catch (error: any) {
+    console.error('[POST_USERS] Error creating user:', error);
+    return res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to create or retrieve user.' });
+  }
+});
+
+// 4. GET /api/reservations - Fetch reservations for a user (respects RLS)
+router.get('/reservations', async (req: Request, res: Response) => {
+  const { userId } = req.query;
+  if (!userId) {
+    return res.status(400).json({ error: 'INVALID_INPUT', message: 'userId query parameter is required.' });
+  }
+
+  const transaction = await sequelize.transaction();
+  try {
+    // Set RLS context in session
+    await sequelize.query('SET LOCAL app.current_user_id = :userId', {
+      replacements: { userId: userId.toString() },
+      transaction,
+      logging: false
+    });
+
+    const reservations = await Reservation.findAll({
+      order: [['id', 'DESC']],
+      transaction
+    });
+
+    await transaction.commit();
+    return res.json(reservations);
+  } catch (error: any) {
+    console.error('[GET_RESERVATIONS] Failed to fetch reservations:', error);
+    try {
+      await transaction.rollback();
+    } catch (e) {}
+    return res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to fetch reservations.' });
   }
 });
 

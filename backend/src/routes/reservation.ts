@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import sequelize from '../../config/db';
 import { Drop, Reservation } from '../../models';
 import { Transaction } from 'sequelize';
+import { broadcastStockUpdate } from '../socket';
 
 const router = Router();
 
@@ -68,6 +69,9 @@ router.post('/reserve', async (req: Request, res: Response, next: NextFunction) 
     // Commit transaction
     await transaction.commit();
     console.log(`[RESERVE][TX:${transaction.id}] Transaction committed successfully.`);
+
+    // Broadcast updated stock count to all connected socket clients
+    broadcastStockUpdate(Number(dropId), drop.available_stock);
 
     return res.status(201).json({
       success: true,

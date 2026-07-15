@@ -20,6 +20,7 @@ async function testStage4Endpoints() {
     const [testDrop, dropCreated] = await Drop.findOrCreate({
       where: { name: 'Stage 4 Limited Edition Hoodie' },
       defaults: {
+        name: 'Stage 4 Limited Edition Hoodie',
         price: 79.99,
         total_stock: 5,
         available_stock: 5

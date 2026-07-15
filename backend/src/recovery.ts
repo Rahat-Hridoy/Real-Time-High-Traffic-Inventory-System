@@ -1,5 +1,5 @@
 import sequelize from '../config/db';
-import { Reservation, Drop } from '../models';
+import { Reservation, Drop, User, Purchase } from '../models';
 import { Op, Transaction } from 'sequelize';
 import { broadcastStockUpdate } from './socket';
 
@@ -80,7 +80,32 @@ export async function recoverExpiredStock(): Promise<number[]> {
 
     // 6. Broadcast the new stock levels to socket clients after transaction commit
     for (const { dropId, availableStock } of affectedDrops) {
-      broadcastStockUpdate(dropId, availableStock);
+      const pendingCount = await Reservation.count({
+        where: {
+          drop_id: dropId,
+          status: 'PENDING',
+          expires_at: { [Op.gt]: new Date() }
+        }
+      });
+      const status = pendingCount > 0 ? 'pending' : 'expired';
+
+      const recentPurchases = await Purchase.findAll({
+        where: { drop_id: dropId },
+        order: [['created_at', 'DESC']],
+        limit: 3,
+        include: [
+          {
+            model: User,
+            as: 'user',
+            attributes: ['username']
+          }
+        ]
+      });
+      const recentBuyers = recentPurchases.map(p => ({
+        username: (p as any).user?.username || 'Anonymous'
+      }));
+
+      broadcastStockUpdate(dropId, availableStock, status, recentBuyers);
     }
 
     return affectedDrops.map(d => d.dropId);

@@ -7,11 +7,13 @@
  *  4. Delegate ALL business logic to useInventory hook.
  */
 
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import PurchasePage from './pages/PurchasePage';
 import { useInventory, loadUserFromStorage, persistUser, clearUser } from './hooks/useInventory';
 import { apiLoginUser } from './lib/api';
 import type { AppUser } from './types';
@@ -51,28 +53,65 @@ export default function App() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <>
+    <Router>
       <Toaster position="top-right" toastOptions={{ style: TOAST_STYLE }} />
 
-      {!user ? (
-        <LoginPage onLogin={handleLogin} />
-      ) : (
-        <DashboardPage
-          user={user}
-          drops={inventory.drops}
-          reservations={inventory.reservations}
-          socketConnected={inventory.socketConnected}
-          reservingDropId={inventory.reservingDropId}
-          purchasingResId={inventory.purchasingResId}
-          stockPulseId={inventory.stockPulseId}
-          isLoadingDrops={inventory.isLoadingDrops}
-          onRefreshDrops={inventory.refreshDrops}
-          onReserve={inventory.reserve}
-          onPurchase={inventory.purchase}
-          onReservationExpired={inventory.markExpired}
-          onLogout={handleLogout}
+      <Routes>
+        <Route
+          path="/login"
+          element={
+            !user ? (
+              <LoginPage onLogin={handleLogin} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
         />
-      )}
-    </>
+        <Route
+          path="/"
+          element={
+            user ? (
+              <DashboardPage
+                user={user}
+                drops={inventory.drops}
+                reservations={inventory.reservations}
+                socketConnected={inventory.socketConnected}
+                reservingDropId={inventory.reservingDropId}
+                purchasingResId={inventory.purchasingResId}
+                stockPulseId={inventory.stockPulseId}
+                isLoadingDrops={inventory.isLoadingDrops}
+                onRefreshDrops={inventory.refreshDrops}
+                onReserve={inventory.reserve}
+                onPurchase={inventory.purchase}
+                onReservationExpired={inventory.markExpired}
+                onLogout={handleLogout}
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/purchase/:productId"
+          element={
+            user ? (
+              <PurchasePage
+                user={user}
+                drops={inventory.drops}
+                reservations={inventory.reservations}
+                purchasingResId={inventory.purchasingResId}
+                onPurchase={inventory.purchase}
+                onReservationExpired={inventory.markExpired}
+                socketConnected={inventory.socketConnected}
+                onLogout={handleLogout}
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }

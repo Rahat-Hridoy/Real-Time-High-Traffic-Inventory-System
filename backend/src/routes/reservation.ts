@@ -1,10 +1,39 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import sequelize from '../../config/db';
 import { Drop, Reservation, User, Purchase } from '../../models';
-import { Transaction } from 'sequelize';
+import { Transaction, Op } from 'sequelize';
 import { broadcastStockUpdate } from '../socket';
 
 const router = Router();
+
+async function getRecentBuyersForDrop(dropId: number): Promise<{ username: string }[]> {
+  const recentPurchases = await Purchase.findAll({
+    where: { drop_id: dropId },
+    order: [['created_at', 'DESC']],
+    limit: 3,
+    include: [
+      {
+        model: User,
+        as: 'user',
+        attributes: ['username']
+      }
+    ]
+  });
+  return recentPurchases.map(p => ({
+    username: (p as any).user?.username || 'Anonymous'
+  }));
+}
+
+async function getDropPendingStatus(dropId: number): Promise<'pending' | 'default'> {
+  const pendingCount = await Reservation.count({
+    where: {
+      drop_id: dropId,
+      status: 'PENDING',
+      expires_at: { [Op.gt]: new Date() }
+    }
+  });
+  return pendingCount > 0 ? 'pending' : 'default';
+}
 
 router.post('/reserve', async (req: Request, res: Response, next: NextFunction) => {
   const { userId, dropId } = req.body;
@@ -70,8 +99,11 @@ router.post('/reserve', async (req: Request, res: Response, next: NextFunction) 
     await transaction.commit();
     console.log(`[RESERVE][TX:${(transaction as any).id}] Transaction committed successfully.`);
 
+    const dropStatus = await getDropPendingStatus(Number(dropId));
+    const recentBuyers = await getRecentBuyersForDrop(Number(dropId));
+
     // Broadcast updated stock count to all connected socket clients
-    broadcastStockUpdate(Number(dropId), drop.available_stock);
+    broadcastStockUpdate(Number(dropId), drop.available_stock, dropStatus, recentBuyers);
 
     return res.status(201).json({
       success: true,
@@ -110,7 +142,18 @@ router.post('/reserve', async (req: Request, res: Response, next: NextFunction) 
 router.get('/drops', async (req: Request, res: Response) => {
   try {
     const drops = await Drop.findAll({ order: [['id', 'ASC']] });
-    return res.json(drops);
+    
+    const dropsWithDetails = await Promise.all(drops.map(async (drop) => {
+      const dropStatus = await getDropPendingStatus(drop.id);
+      const recentBuyers = await getRecentBuyersForDrop(drop.id);
+      return {
+        ...drop.toJSON(),
+        status: dropStatus,
+        recentBuyers
+      };
+    }));
+
+    return res.json(dropsWithDetails);
   } catch (error: any) {
     console.error('[GET_DROPS] Failed to fetch drops:', error);
     return res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to fetch drops.' });
@@ -174,6 +217,14 @@ router.post('/purchase', async (req: Request, res: Response) => {
 
     await transaction.commit();
     console.log(`[PURCHASE][TX:${(transaction as any).id}] Transaction committed. Purchase ID: ${purchase.id}`);
+
+    // Fetch updated stock level, status, and recent buyers
+    const drop = await Drop.findByPk(reservation.drop_id);
+    const availableStock = drop ? drop.available_stock : 0;
+    const dropStatus = await getDropPendingStatus(reservation.drop_id);
+    const recentBuyers = await getRecentBuyersForDrop(reservation.drop_id);
+
+    broadcastStockUpdate(reservation.drop_id, availableStock, dropStatus, recentBuyers);
 
     return res.status(201).json({
       success: true,

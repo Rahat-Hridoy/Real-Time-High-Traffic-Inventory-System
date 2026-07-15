@@ -4,113 +4,160 @@
  */
 
 import React from 'react';
-import { Plane, Tag, Sparkles, Loader2, XCircle } from 'lucide-react';
+import { Package, Zap, Loader2 } from 'lucide-react';
 import type { Drop } from '../../types';
 
 interface Props {
   drop: Drop;
-  /** Tailwind gradient string e.g. "from-purple-500 to-indigo-500" */
-  accentClass: string;
+  accentClass: string; // Left in for props compatibility
   isReserving: boolean;
   hasPulse: boolean;
   onReserve: () => void;
 }
 
-const ProductCard: React.FC<Props> = ({ drop, accentClass, isReserving, hasPulse, onReserve }) => {
+const AVATAR_COLORS = [
+  'bg-blue-500',
+  'bg-orange-500',
+  'bg-teal-500',
+  'bg-indigo-500',
+  'bg-pink-500',
+  'bg-emerald-500',
+];
+
+function getAvatarColor(username: string): string {
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[index];
+}
+
+const ProductCard: React.FC<Props> = ({ drop, isReserving, hasPulse, onReserve }) => {
   const isOutOfStock = drop.available_stock <= 0;
-  const isLowStock   = !isOutOfStock && drop.available_stock <= 2;
+  const isLowStock = !isOutOfStock && drop.available_stock <= 3;
+  const isPending = drop.status === 'pending';
+
+  // Format footer text based on recent buyers list length
+  const buyersCount = drop.recentBuyers ? drop.recentBuyers.length : 0;
+  let buyerText = '';
+  if (buyersCount === 1) {
+    buyerText = `${drop.recentBuyers![0].username} just grabbed this`;
+  } else if (buyersCount === 2) {
+    buyerText = `${drop.recentBuyers![0].username} and 1 other just grabbed this`;
+  } else if (buyersCount >= 3) {
+    buyerText = `${drop.recentBuyers![0].username} and 2 others just grabbed this`;
+  }
 
   return (
     <article
-      className={`product-card rounded-3xl overflow-hidden transition-all duration-300 ${
-        hasPulse ? 'ring-2 ring-purple-500/40 shadow-xl shadow-purple-500/20' : ''
+      className={`bg-white border border-gray-150 rounded-2xl p-5 shadow-xs transition-all duration-300 flex flex-col justify-between ${
+        hasPulse ? 'ring-2 ring-purple-500/20' : ''
       }`}
     >
-      {/* ── Hero / image area ── */}
-      <div className={`relative h-44 bg-gradient-to-br ${accentClass} flex items-center justify-center overflow-hidden`}>
-        {/* Subtle dot-grid overlay */}
-        <div
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle at 20% 80%, white 1px, transparent 1px),' +
-              'radial-gradient(circle at 80% 20%, white 1px, transparent 1px)',
-            backgroundSize: '30px 30px',
-          }}
-        />
+      <div>
+        {/* ── Image Area ── */}
+        <div className="relative aspect-[4/3] bg-gray-50 rounded-xl flex items-center justify-center border border-gray-100 overflow-hidden">
+          <Package className="w-14 h-14 text-gray-300 stroke-[1.25]" />
+        </div>
 
-        <Plane className="w-16 h-16 text-white/80 drop-shadow-lg -rotate-45" />
+        {/* ── Details ── */}
+        <h3 className="text-slate-800 text-[15px] font-bold mt-4 tracking-tight leading-snug">
+          {drop.name}
+        </h3>
 
-        {/* Stock status badge */}
-        <span
-          className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
-            isOutOfStock
-              ? 'bg-rose-900/80 text-rose-300 border border-rose-700/50'
-              : isLowStock
-              ? 'bg-amber-900/80 text-amber-300 border border-amber-700/50 animate-pulse'
-              : 'bg-emerald-900/80 text-emerald-300 border border-emerald-700/50'
-          }`}
-        >
-          {isOutOfStock
-            ? 'Sold Out'
-            : isLowStock
-            ? `Only ${drop.available_stock} left!`
-            : 'In Stock'}
-        </span>
-
-        {/* Drop ID */}
-        <span className="absolute top-3 left-3 px-2 py-0.5 rounded-lg bg-black/30 backdrop-blur-sm text-[10px] text-white/70 font-medium border border-white/10">
-          #{drop.id}
-        </span>
-      </div>
-
-      {/* ── Card body ── */}
-      <div className="p-5">
-        {/* Name & price */}
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="min-w-0">
-            <h3 className="font-bold text-slate-100 text-base leading-tight truncate">{drop.name}</h3>
-            <div className="flex items-center gap-1.5 mt-1">
-              <Tag className="w-3 h-3 text-slate-500" />
-              <span className="text-xs text-slate-500">Drop Item</span>
-            </div>
-          </div>
-          <span className={`shrink-0 text-xl font-black bg-gradient-to-r ${accentClass} bg-clip-text text-transparent`}>
+        {/* ── Price and Badge Row ── */}
+        <div className="flex items-center justify-between mt-2.5">
+          <span className="text-slate-900 text-lg font-extrabold tracking-tight">
             ${drop.price}
           </span>
-        </div>
 
-        {/* Stock Status */}
-        <div className="flex justify-between items-center text-xs mb-4">
-          <span className="text-slate-500 font-medium">Available Seats</span>
-          <span className={`font-semibold text-sm ${
-            isOutOfStock ? 'text-rose-400' : isLowStock ? 'text-amber-400' : 'text-emerald-400'
-          }`}>
-            {isOutOfStock ? 'Sold Out' : `${drop.available_stock} / ${drop.total_stock}`}
-          </span>
-        </div>
-
-        {/* Reserve CTA */}
-        <button
-          id={`reserve-btn-${drop.id}`}
-          disabled={isOutOfStock || isReserving}
-          onClick={onReserve}
-          className={`w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all select-none ${
-            isOutOfStock
-              ? 'bg-slate-800/60 text-slate-600 border border-slate-700/40 cursor-not-allowed'
-              : isReserving
-              ? 'bg-purple-700/50 text-slate-300 cursor-wait'
-              : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white active:scale-[0.97] shadow-lg shadow-purple-500/20 hover:shadow-purple-500/35'
-          }`}
-        >
-          {isReserving ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /><span>Securing Lock…</span></>
-          ) : isOutOfStock ? (
-            <><XCircle className="w-4 h-4" /><span>Out of Stock</span></>
+          {/* ── Badge ── */}
+          {isOutOfStock ? (
+            <span className="bg-gray-100 text-gray-500 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-gray-200/50">
+              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
+              Sold Out
+            </span>
+          ) : isPending ? (
+            <span className="bg-amber-50 text-amber-600 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-amber-200/50">
+              <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+              Reserved/Processing
+            </span>
+          ) : isLowStock ? (
+            <span className="bg-rose-50 text-rose-500 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-rose-200/50">
+              <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
+              {drop.available_stock} left
+            </span>
           ) : (
-            <><Sparkles className="w-4 h-4" /><span>Reserve Now</span></>
+            <span className="bg-emerald-50 text-emerald-600 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-emerald-200/50">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+              {drop.available_stock} left
+            </span>
           )}
-        </button>
+        </div>
+      </div>
+
+      <div>
+        {/* ── Button ── */}
+        {isOutOfStock ? (
+          <button
+            disabled
+            className="w-full bg-gray-100 text-gray-400 rounded-xl py-3 px-4 text-xs font-bold mt-4 flex items-center justify-center gap-2 border border-gray-100 cursor-not-allowed select-none"
+          >
+            Sold Out
+          </button>
+        ) : (
+          <button
+            onClick={onReserve}
+            disabled={isReserving}
+            className="w-full bg-black text-white hover:bg-neutral-800 transition-colors rounded-xl py-3 px-4 text-xs font-bold mt-4 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform select-none cursor-pointer"
+          >
+            {isReserving ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Reserving...</span>
+              </>
+            ) : (
+              <span>Reserve</span>
+            )}
+          </button>
+        )}
+
+        {/* ── Footer / Recently Purchased ── */}
+        <div className="mt-4 flex flex-col justify-start">
+          {buyersCount > 0 ? (
+            <>
+              {/* Headline */}
+              <div className="flex items-center gap-1 text-slate-400 font-bold text-[9px] tracking-wider uppercase mb-2">
+                <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
+                <span>Recently Purchased</span>
+              </div>
+              
+              {/* Buyer list */}
+              <div className="flex items-center">
+                <div className="flex -space-x-1.5 overflow-hidden mr-2">
+                  {drop.recentBuyers!.slice(0, 3).map((buyer, idx) => (
+                    <div
+                      key={idx}
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white border-2 border-white ring-1 ring-gray-100 ${getAvatarColor(
+                        buyer.username
+                      )}`}
+                    >
+                      {buyer.username[0].toUpperCase()}
+                    </div>
+                  ))}
+                </div>
+                <span className="text-[11px] text-slate-500 font-medium truncate">
+                  {buyerText}
+                </span>
+              </div>
+            </>
+          ) : (
+            <p className="text-[11px] text-slate-400 italic">
+              No purchases yet — be the first
+            </p>
+          )}
+        </div>
       </div>
     </article>
   );

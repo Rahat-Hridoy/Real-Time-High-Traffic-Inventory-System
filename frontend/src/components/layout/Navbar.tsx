@@ -37,13 +37,13 @@ const Navbar: React.FC<Props> = ({ user, socketConnected, onLogout }) => {
   const avatar = user.username[0].toUpperCase();
 
   return (
-    <nav className="navbar sticky top-0 z-50 px-6 h-16 flex items-center justify-between gap-4">
+    <nav className="bg-white border-b border-gray-150 sticky top-0 z-50 px-6 h-16 flex items-center justify-between gap-4 shadow-xs">
       {/* ── Brand ── */}
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
+        <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center">
           <ShoppingBag className="w-4 h-4 text-white" />
         </div>
-        <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent">
+        <span className="font-extrabold text-lg tracking-tight text-slate-900">
           Techzu Drops
         </span>
       </div>
@@ -55,14 +55,14 @@ const Navbar: React.FC<Props> = ({ user, socketConnected, onLogout }) => {
           aria-label={socketConnected ? 'Live sync active' : 'Offline'}
           className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${
             socketConnected
-              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-              : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-xxs'
+              : 'bg-rose-50 border-rose-200 text-rose-700'
           }`}
         >
           {socketConnected ? (
-            <><Wifi className="w-3 h-3 animate-pulse" /><span>Live Sync</span></>
+            <><Wifi className="w-3 h-3 text-emerald-500 animate-pulse" /><span>Live Sync</span></>
           ) : (
-            <><WifiOff className="w-3 h-3" /><span>Offline</span></>
+            <><WifiOff className="w-3 h-3 text-rose-500" /><span>Offline</span></>
           )}
         </div>
 
@@ -73,12 +73,12 @@ const Navbar: React.FC<Props> = ({ user, socketConnected, onLogout }) => {
             aria-haspopup="true"
             aria-expanded={dropdownOpen}
             onClick={() => setDropdownOpen(v => !v)}
-            className="flex items-center gap-2.5 pl-3 pr-2 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/60 hover:border-purple-500/40 transition-all"
+            className="flex items-center gap-2.5 pl-3 pr-2 py-1.5 rounded-xl bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all font-semibold shadow-xxs cursor-pointer select-none"
           >
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs">
+            <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center text-white font-extrabold text-xs">
               {avatar}
             </div>
-            <span className="text-sm font-semibold text-slate-200 max-w-[120px] truncate hidden sm:block">
+            <span className="text-sm font-bold text-slate-700 max-w-[120px] truncate hidden sm:block">
               {user.username}
             </span>
             <ChevronDown
@@ -89,24 +89,24 @@ const Navbar: React.FC<Props> = ({ user, socketConnected, onLogout }) => {
           {dropdownOpen && (
             <div
               role="menu"
-              className="absolute right-0 top-full mt-2 w-52 dropdown-menu rounded-2xl p-2 shadow-2xl"
+              className="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-150 rounded-2xl p-2 shadow-lg z-50"
             >
               {/* User info header */}
               <div className="px-3 py-2.5 mb-1">
-                <p className="text-sm font-bold text-slate-100 truncate">{user.username}</p>
-                <p className="text-[11px] text-slate-500">PostgreSQL ID #{user.id}</p>
+                <p className="text-sm font-extrabold text-slate-800 truncate">{user.username}</p>
+                <p className="text-[11px] text-slate-400 font-semibold">PostgreSQL ID #{user.id}</p>
               </div>
 
-              <div className="h-px bg-slate-700/60 mx-1 mb-1" />
+              <div className="h-px bg-gray-100 mx-1 mb-1" />
 
               {/* Actions */}
               <button
                 role="menuitem"
                 id="nav-logout-btn"
                 onClick={() => { setDropdownOpen(false); onLogout(); }}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-rose-400 hover:bg-rose-500/10 transition-all"
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-rose-600 hover:bg-rose-50 transition-all select-none cursor-pointer"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-4 h-4 text-rose-600" />
                 Sign Out
               </button>
             </div>

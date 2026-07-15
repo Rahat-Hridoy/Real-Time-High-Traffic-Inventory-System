@@ -1,7 +1,7 @@
 import sequelize from '../config/db';
 import { Drop, Reservation, Purchase } from '../models';
 
-async function seedAirTickets() {
+async function seedSneakers() {
   console.log('[SEED] Connecting to database...');
   try {
     await sequelize.authenticate();
@@ -15,49 +15,49 @@ async function seedAirTickets() {
       await Purchase.destroy({ where: {}, transaction: tx });
       await Drop.destroy({ where: {}, transaction: tx });
 
-      console.log('[SEED] Seeding 6 air ticket booking drops...');
-      const tickets = [
+      console.log('[SEED] Seeding 6 sneaker drops...');
+      const sneakers = [
         {
-          name: 'Air Jordan Flight 1-100 (JFK to LHR)',
-          price: 499.99,
-          total_stock: 10,
-          available_stock: 10,
+          name: 'Air Jordan 1 Retro High "Chicago"',
+          price: 220.00,
+          total_stock: 100,
+          available_stock: 3,
         },
         {
-          name: 'Air Jordan Flight 2-200 (NRT to CDG)',
-          price: 799.50,
-          total_stock: 8,
-          available_stock: 8,
+          name: 'Yeezy Boost 350 V2 "Zebra"',
+          price: 230.00,
+          total_stock: 50,
+          available_stock: 0,
         },
         {
-          name: 'Air Jordan Flight 3-300 (LAX to SYD)',
-          price: 949.00,
-          total_stock: 5,
-          available_stock: 5,
+          name: 'Nike Dunk Low "Panda"',
+          price: 110.00,
+          total_stock: 80,
+          available_stock: 47,
         },
         {
-          name: 'Air Jordan Flight 4-400 (DXB to SIN)',
-          price: 619.99,
-          total_stock: 12,
-          available_stock: 12,
+          name: 'New Balance 550 White Grey',
+          price: 130.00,
+          total_stock: 60,
+          available_stock: 22,
         },
         {
-          name: 'Air Jordan Flight 5-500 (LHR to FCO)',
-          price: 179.00,
-          total_stock: 15,
-          available_stock: 15,
+          name: 'Adidas Samba OG Core Black',
+          price: 100.00,
+          total_stock: 40,
+          available_stock: 1,
         },
         {
-          name: 'Air Jordan Flight 6-600 (SFO to HNL)',
-          price: 349.50,
-          total_stock: 6,
-          available_stock: 6,
+          name: "Nike Air Force 1 '07 Triple White",
+          price: 90.00,
+          total_stock: 120,
+          available_stock: 65,
         },
       ];
 
-      for (const t of tickets) {
-        const created = await Drop.create(t, { transaction: tx });
-        console.log(`[SEED] Created: ${created.name} (ID: ${created.id}, Stock: ${created.available_stock})`);
+      for (const s of sneakers) {
+        const created = await Drop.create(s, { transaction: tx });
+        console.log(`[SEED] Created: ${created.name} (ID: ${created.id}, Stock: ${created.available_stock}/${created.total_stock})`);
       }
 
       await tx.commit();
@@ -75,4 +75,4 @@ async function seedAirTickets() {
   }
 }
 
-seedAirTickets();
+seedSneakers();

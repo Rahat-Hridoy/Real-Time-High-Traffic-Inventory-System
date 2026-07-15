@@ -29,7 +29,7 @@ interface UseInventoryReturn {
 
   // Actions
   refreshDrops: () => Promise<void>;
-  reserve: (dropId: number) => Promise<void>;
+  reserve: (dropId: number) => Promise<Reservation | undefined>;
   purchase: (reservationId: number) => Promise<void>;
   markExpired: (reservationId: number) => void;
 }
@@ -44,13 +44,28 @@ export function useInventory(user: AppUser | null): UseInventoryReturn {
 
   // ── Socket.io ─────────────────────────────────────────────────────────────
   const handleStockUpdate = useCallback(
-    ({ dropId, availableStock }: { dropId: number; availableStock: number }) => {
+    ({
+      dropId,
+      availableStock,
+      status,
+      recentBuyers,
+    }: {
+      dropId: number;
+      availableStock: number;
+      status: 'default' | 'pending' | 'completed' | 'expired';
+      recentBuyers?: { username: string }[];
+    }) => {
       setDrops(prev =>
         prev.map(drop => {
           if (drop.id === dropId) {
             setStockPulseId(dropId);
             setTimeout(() => setStockPulseId(null), 1000);
-            return { ...drop, available_stock: availableStock };
+            return {
+              ...drop,
+              available_stock: availableStock,
+              status: (status === 'completed' || status === 'expired') ? 'default' : status,
+              recentBuyers: recentBuyers || drop.recentBuyers,
+            };
           }
           return drop;
         })
@@ -59,7 +74,24 @@ export function useInventory(user: AppUser | null): UseInventoryReturn {
     []
   );
 
-  const socketConnected = useSocket({ onStockUpdate: handleStockUpdate });
+  const handleStockPending = useCallback(
+    ({ dropId }: { dropId: number }) => {
+      setDrops(prev =>
+        prev.map(drop => {
+          if (drop.id === dropId) {
+            return { ...drop, status: 'pending' as const };
+          }
+          return drop;
+        })
+      );
+    },
+    []
+  );
+
+  const { connected: socketConnected, emitStockPending } = useSocket({
+    onStockUpdate: handleStockUpdate,
+    onStockPending: handleStockPending,
+  });
 
   // ── Data fetching ─────────────────────────────────────────────────────────
   const refreshDrops = useCallback(async () => {
@@ -97,18 +129,35 @@ export function useInventory(user: AppUser | null): UseInventoryReturn {
   const reserve = useCallback(
     async (dropId: number) => {
       if (!user) { toast.error('Please sign in first.'); return; }
+      
+      // Emit 'stock-pending' event via Socket.io instantly
+      emitStockPending(dropId);
+      
+      // Locally update drop to pending instantly
+      handleStockPending({ dropId });
+
       setReservingDropId(dropId);
       try {
         const data = await apiReserveDrop(user.id, dropId);
         toast.success('Item reserved! Secure it within 60 s.', { duration: 4000 });
         setReservations(prev => [data.reservation, ...prev]);
+        return data.reservation;
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : 'Reservation failed.', { duration: 4000 });
+        // Revert local pending if failed
+        setDrops(prev =>
+          prev.map(drop => {
+            if (drop.id === dropId) {
+              return { ...drop, status: 'default' as const };
+            }
+            return drop;
+          })
+        );
       } finally {
         setReservingDropId(null);
       }
     },
-    [user]
+    [user, emitStockPending, handleStockPending]
   );
 
   const purchase = useCallback(
@@ -123,6 +172,7 @@ export function useInventory(user: AppUser | null): UseInventoryReturn {
         );
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : 'Purchase failed.');
+        throw err;
       } finally {
         setPurchasingResId(null);
       }

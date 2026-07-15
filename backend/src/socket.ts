@@ -17,6 +17,11 @@ export function initSocket(server: HttpServer): SocketIOServer {
   io.on('connection', (socket) => {
     console.log(`[SOCKET] Client connected: ${socket.id}`);
 
+    socket.on('stock-pending', ({ dropId }) => {
+      console.log(`[SOCKET] Received stock-pending -> Drop ID: ${dropId}`);
+      socket.broadcast.emit('stock-pending', { dropId });
+    });
+
     socket.on('disconnect', () => {
       console.log(`[SOCKET] Client disconnected: ${socket.id}`);
     });
@@ -35,13 +40,22 @@ export function getIO(): SocketIOServer {
   return io;
 }
 
+export interface RecentBuyer {
+  username: string;
+}
+
 /**
  * Broadcasts the updated stock level of a drop to all connected clients.
  */
-export function broadcastStockUpdate(dropId: number, availableStock: number): void {
+export function broadcastStockUpdate(
+  dropId: number,
+  availableStock: number,
+  status: 'default' | 'pending' | 'completed' | 'expired' = 'default',
+  recentBuyers?: RecentBuyer[]
+): void {
   if (io) {
-    console.log(`[SOCKET] Broadcasting stock update -> Drop ID: ${dropId}, Available Stock: ${availableStock}`);
-    io.emit('stock_update', { dropId, availableStock });
+    console.log(`[SOCKET] Broadcasting stock update -> Drop ID: ${dropId}, Available Stock: ${availableStock}, Status: ${status}`);
+    io.emit('stock_update', { dropId, availableStock, status, recentBuyers });
   } else {
     console.warn('[SOCKET] Broadcast failed: Socket.io is not initialized.');
   }

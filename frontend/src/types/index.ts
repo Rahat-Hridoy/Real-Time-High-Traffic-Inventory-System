@@ -7,6 +7,8 @@ export interface Drop {
   total_stock: number;
   available_stock: number;
   createdAt: string;
+  status?: 'default' | 'pending';
+  recentBuyers?: { username: string }[];
 }
 
 export interface Reservation {

@@ -131,10 +131,10 @@ body::selection {
 }
 
 /* ── Custom scrollbars ── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.4); }
-::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.3); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(168, 85, 247, 0.6); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.25); }
 
 /* ── Pulsing border for active reservations ── */
 @keyframes pulse-border {

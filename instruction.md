@@ -82,6 +82,3 @@ You are an Elite Full-Stack Engineer and Senior QA Lead. Your goal is to build a
 - Finally, create a beautiful, highly detailed `README.md` file containing installation guides, project architectures, test instructions, and logging breakdowns.
 
 ---
-
-## START WORK
-Please begin with **Stage 1**. Set up the project structure, models, migrations, and database pool configuration. Ensure you run your validation scripts, log the output, and present the Stage 1 report to the user before moving to Stage 2.

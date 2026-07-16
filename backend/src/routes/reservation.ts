@@ -376,4 +376,43 @@ router.post('/cancel-reservation', async (req: Request, res: Response) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// TEST-ONLY: Reset a drop's available_stock (guarded by NODE_ENV=test)
+// Used by Playwright to seed deterministic state before concurrency tests.
+// ─────────────────────────────────────────────────────────────────────────────
+router.patch('/drops/:id/reset-stock', async (req: Request, res: Response) => {
+  if (process.env.NODE_ENV !== 'test') {
+    return res.status(403).json({ error: 'FORBIDDEN', message: 'This endpoint is only available in test mode.' });
+  }
+
+  const dropId = Number(req.params.id);
+  const { stock } = req.body;
+
+  if (isNaN(dropId) || stock === undefined || typeof stock !== 'number') {
+    return res.status(400).json({ error: 'INVALID_INPUT', message: 'dropId and numeric stock are required.' });
+  }
+
+  try {
+    const drop = await Drop.findByPk(dropId);
+    if (!drop) {
+      return res.status(404).json({ error: 'DROP_NOT_FOUND', message: 'Drop not found.' });
+    }
+
+    // Also expire any lingering PENDING reservations for this drop
+    await Reservation.update(
+      { status: 'EXPIRED' },
+      { where: { drop_id: dropId, status: 'PENDING' } }
+    );
+
+    drop.available_stock = stock;
+    await drop.save();
+
+    console.log(`[TEST-RESET] Drop ID ${dropId} stock reset to ${stock}. Pending reservations expired.`);
+    return res.status(200).json({ success: true, dropId, available_stock: drop.available_stock });
+  } catch (error: any) {
+    console.error('[TEST-RESET] Error resetting stock:', error.message);
+    return res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to reset stock.' });
+  }
+});
+
 export default router;

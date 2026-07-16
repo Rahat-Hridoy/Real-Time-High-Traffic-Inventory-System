@@ -13,6 +13,7 @@ import {
   apiGetReservations,
   apiReserveDrop,
   apiPurchase,
+  apiCancelReservation,
 } from '../lib/api';
 import { STORAGE_KEY_USER } from '../constants';
 import type { Drop, Reservation, AppUser } from '../types';
@@ -32,6 +33,7 @@ interface UseInventoryReturn {
   reserve: (dropId: number) => Promise<Reservation | undefined>;
   purchase: (reservationId: number) => Promise<void>;
   markExpired: (reservationId: number) => void;
+  cancelReservation: (reservationId: number) => Promise<void>;
 }
 
 export function useInventory(user: AppUser | null): UseInventoryReturn {
@@ -162,6 +164,23 @@ export function useInventory(user: AppUser | null): UseInventoryReturn {
     );
   }, []);
 
+  const cancelReservation = useCallback(
+    async (reservationId: number) => {
+      if (!user) return;
+      try {
+        await apiCancelReservation(reservationId, user.id);
+        toast.success('Reservation cancelled.');
+        setReservations(prev =>
+          prev.map(r => (r.id === reservationId ? { ...r, status: 'EXPIRED' as const } : r))
+        );
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : 'Cancellation failed.');
+        throw err;
+      }
+    },
+    [user]
+  );
+
   return {
     drops,
     reservations,
@@ -174,6 +193,7 @@ export function useInventory(user: AppUser | null): UseInventoryReturn {
     reserve,
     purchase,
     markExpired,
+    cancelReservation,
   };
 }
 

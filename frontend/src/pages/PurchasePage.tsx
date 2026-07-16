@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Package, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import CountdownTimer from '../components/ui/CountdownTimer';
@@ -13,6 +13,7 @@ interface Props {
   purchasingResId: number | null;
   onPurchase: (reservationId: number) => Promise<void>;
   onReservationExpired: (reservationId: number) => void;
+  onCancelReservation: (reservationId: number) => Promise<void>;
   socketConnected: boolean;
   onLogout: () => void;
 }
@@ -24,17 +25,35 @@ const PurchasePage: React.FC<Props> = ({
   purchasingResId,
   onPurchase,
   onReservationExpired,
+  onCancelReservation,
   socketConnected,
   onLogout,
 }) => {
   const { productId } = useParams<{ productId: string }>();
   const [inputUsername, setInputUsername] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const navigate = useNavigate();
 
   const product = drops.find(d => d.id === Number(productId));
   const activeReservation = reservations.find(
     r => r.drop_id === Number(productId) && r.status === 'PENDING'
   );
+
+  const handleCancelAndBack = async () => {
+    if (!activeReservation) {
+      navigate('/');
+      return;
+    }
+
+    setIsCancelling(true);
+    try {
+      await onCancelReservation(activeReservation.id);
+      navigate('/');
+    } catch {
+      setIsCancelling(false);
+    }
+  };
 
   const handleConfirmPurchase = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,10 +106,18 @@ const PurchasePage: React.FC<Props> = ({
         
         {/* Back Link */}
         <div className="mb-6">
-          <Link to="/" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-800 text-sm font-bold transition-colors">
-            <ArrowLeft className="w-4 h-4" />
+          <button
+            onClick={handleCancelAndBack}
+            disabled={isCancelling}
+            className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-800 text-sm font-bold transition-colors cursor-pointer bg-transparent border-none p-0 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isCancelling ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <ArrowLeft className="w-4 h-4" />
+            )}
             <span>Cancel & Back</span>
-          </Link>
+          </button>
         </div>
 
         {isSuccess ? (
@@ -165,20 +192,37 @@ const PurchasePage: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={purchasingResId !== null}
-                    className="w-full bg-black hover:bg-neutral-800 text-white rounded-xl py-3.5 px-4 text-xs font-bold mt-8 transition-colors flex items-center justify-center gap-2 active:scale-[0.98] transition-transform select-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {purchasingResId !== null ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Securing Stock...</span>
-                      </>
-                    ) : (
-                      <span>Confirm Purchase</span>
-                    )}
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-3 mt-8">
+                    <button
+                      type="button"
+                      onClick={handleCancelAndBack}
+                      disabled={purchasingResId !== null || isCancelling}
+                      className="flex-1 bg-white hover:bg-gray-50 text-slate-700 border border-gray-250 rounded-xl py-3.5 px-4 text-xs font-bold transition-colors flex items-center justify-center gap-2 active:scale-[0.98] transition-transform select-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isCancelling ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Cancelling...</span>
+                        </>
+                      ) : (
+                        <span>Cancel & Back</span>
+                      )}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={purchasingResId !== null || isCancelling}
+                      className="flex-1 bg-black hover:bg-neutral-800 text-white rounded-xl py-3.5 px-4 text-xs font-bold transition-colors flex items-center justify-center gap-2 active:scale-[0.98] transition-transform select-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {purchasingResId !== null ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Securing Stock...</span>
+                        </>
+                      ) : (
+                        <span>Confirm Purchase</span>
+                      )}
+                    </button>
+                  </div>
                 </form>
               ) : (
                 /* Reservation Expired or Not Found */

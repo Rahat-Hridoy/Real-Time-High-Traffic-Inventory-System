@@ -102,6 +102,7 @@ export default function App() {
                 purchasingResId={inventory.purchasingResId}
                 onPurchase={inventory.purchase}
                 onReservationExpired={inventory.markExpired}
+                onCancelReservation={inventory.cancelReservation}
                 socketConnected={inventory.socketConnected}
                 onLogout={handleLogout}
               />

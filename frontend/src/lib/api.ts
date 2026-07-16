@@ -80,3 +80,19 @@ export async function apiPurchase(reservationId: number, userId: number): Promis
 
   return data;
 }
+
+export async function apiCancelReservation(reservationId: number, userId: number): Promise<any> {
+  const res = await fetch(`${BACKEND_URL}/api/cancel-reservation`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reservationId, userId }),
+  });
+
+  const data = await res.json();
+
+  if (res.status !== 200) {
+    throw new Error(data.message ?? 'Cancellation failed.');
+  }
+
+  return data;
+}

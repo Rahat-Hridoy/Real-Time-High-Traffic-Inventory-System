@@ -284,4 +284,95 @@ router.get('/reservations', async (req: Request, res: Response) => {
   }
 });
 
+// 5. POST /api/cancel-reservation - Release reservation and increment stock back
+router.post('/cancel-reservation', async (req: Request, res: Response) => {
+  const { reservationId, userId } = req.body;
+
+  if (!reservationId || !userId) {
+    return res.status(400).json({ error: 'INVALID_INPUT', message: 'reservationId and userId are required.' });
+  }
+
+  console.log(`[CANCEL] Start cancel request: user=${userId}, reservation=${reservationId}`);
+
+  const transaction = await sequelize.transaction();
+  console.log(`[CANCEL][TX:${(transaction as any).id}] Transaction started.`);
+
+  try {
+    // Set RLS context in session
+    await sequelize.query('SET LOCAL app.current_user_id = :userId', {
+      replacements: { userId: userId.toString() },
+      transaction,
+      logging: false
+    });
+
+    // Find the reservation
+    const reservation = await Reservation.findByPk(reservationId, {
+      transaction,
+      lock: Transaction.LOCK.UPDATE
+    });
+
+    if (!reservation) {
+      console.log(`[CANCEL][TX:${(transaction as any).id}] Reservation ID ${reservationId} not found (or restricted by RLS). Rolling back.`);
+      await transaction.rollback();
+      return res.status(404).json({ error: 'RESERVATION_NOT_FOUND', message: 'Reservation not found.' });
+    }
+
+    if (reservation.status !== 'PENDING') {
+      console.log(`[CANCEL][TX:${(transaction as any).id}] Reservation status is ${reservation.status} (expected PENDING). Rolling back.`);
+      await transaction.rollback();
+      return res.status(400).json({ error: 'INVALID_RESERVATION_STATUS', message: `Reservation is already ${reservation.status}.` });
+    }
+
+    // Set reservation to EXPIRED
+    reservation.status = 'EXPIRED';
+    await reservation.save({ transaction });
+
+    // Reclaim stock: Find the corresponding Drop
+    const drop = await Drop.findByPk(reservation.drop_id, {
+      transaction,
+      lock: Transaction.LOCK.UPDATE
+    });
+
+    if (!drop) {
+      console.log(`[CANCEL][TX:${(transaction as any).id}] Drop ID ${reservation.drop_id} not found. Rolling back.`);
+      await transaction.rollback();
+      return res.status(404).json({ error: 'DROP_NOT_FOUND', message: 'The requested drop does not exist.' });
+    }
+
+    drop.available_stock += 1;
+    await drop.save({ transaction });
+    console.log(`[CANCEL][TX:${(transaction as any).id}] Restored stock for Drop ID ${drop.id}. New stock: ${drop.available_stock}`);
+
+    await transaction.commit();
+    console.log(`[CANCEL][TX:${(transaction as any).id}] Transaction committed.`);
+
+    // Fetch updated stock level and recent buyers
+    const availableStock = drop.available_stock;
+    const recentBuyers = await getRecentBuyersForDrop(reservation.drop_id);
+
+    broadcastStockUpdate(reservation.drop_id, availableStock, 'default', recentBuyers);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Reservation cancelled successfully.',
+      reservation: {
+        id: reservation.id,
+        user_id: reservation.user_id,
+        drop_id: reservation.drop_id,
+        status: reservation.status
+      },
+      available_stock: availableStock
+    });
+
+  } catch (error: any) {
+    console.error(`[CANCEL][TX:${(transaction as any).id}] Error encountered during reservation cancellation:`, error.message);
+    try {
+      await transaction.rollback();
+    } catch (rollbackError: any) {
+      console.error(`[CANCEL][TX:${(transaction as any).id}] Rollback failed:`, rollbackError.message);
+    }
+    return res.status(500).json({ error: 'SERVER_ERROR', message: 'An unexpected error occurred.' });
+  }
+});
+
 export default router;

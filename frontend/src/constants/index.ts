@@ -1,5 +1,7 @@
 // ─── API Base ─────────────────────────────────────────────────────────────────
-export const BACKEND_URL = 'http://localhost:5000';
+// In production, VITE_API_URL is set to the Railway backend URL.
+// Falls back to localhost:5000 for local development.
+export const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // ─── Login page sample accounts ──────────────────────────────────────────────
 export const SAMPLE_CREDENTIALS = [

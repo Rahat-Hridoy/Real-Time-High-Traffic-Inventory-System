@@ -4,7 +4,25 @@ import reservationRouter from './routes/reservation';
 
 const app = express();
 
-app.use(cors());
+// Allow requests from local dev and the deployed Vercel frontend.
+// Set FRONTEND_URL env variable on Railway to your Vercel deployment URL.
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:4173',
+  process.env.FRONTEND_URL,
+].filter(Boolean) as string[];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow server-to-server calls (no origin) and whitelisted origins
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    }
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 // Simple logging middleware to track request handling

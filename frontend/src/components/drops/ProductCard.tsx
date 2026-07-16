@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Package, Zap, Loader2 } from 'lucide-react';
+import { Package, Zap } from 'lucide-react';
 import type { Drop } from '../../types';
 
 interface Props {
@@ -36,7 +36,6 @@ function getAvatarColor(username: string): string {
 const ProductCard: React.FC<Props> = ({ drop, isReserving, hasPulse, onReserve }) => {
   const isOutOfStock = drop.available_stock <= 0;
   const isLowStock = !isOutOfStock && drop.available_stock <= 3;
-  const isPending = drop.status === 'pending';
 
   // Format footer text based on recent buyers list length
   const buyersCount = drop.recentBuyers ? drop.recentBuyers.length : 0;
@@ -78,11 +77,6 @@ const ProductCard: React.FC<Props> = ({ drop, isReserving, hasPulse, onReserve }
               <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
               Sold Out
             </span>
-          ) : isPending ? (
-            <span className="bg-amber-50 text-amber-600 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-amber-200/50">
-              <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-              Reserved/Processing
-            </span>
           ) : isLowStock ? (
             <span className="bg-rose-50 text-rose-500 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-rose-200/50">
               <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
@@ -109,17 +103,9 @@ const ProductCard: React.FC<Props> = ({ drop, isReserving, hasPulse, onReserve }
         ) : (
           <button
             onClick={onReserve}
-            disabled={isReserving}
             className="w-full bg-black text-white hover:bg-neutral-800 transition-colors rounded-xl py-3 px-4 text-xs font-bold mt-4 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform select-none cursor-pointer"
           >
-            {isReserving ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Reserving...</span>
-              </>
-            ) : (
-              <span>Reserve</span>
-            )}
+            <span>Reserve</span>
           </button>
         )}
 

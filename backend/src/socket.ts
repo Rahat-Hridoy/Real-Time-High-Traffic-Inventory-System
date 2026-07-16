@@ -17,11 +17,6 @@ export function initSocket(server: HttpServer): SocketIOServer {
   io.on('connection', (socket) => {
     console.log(`[SOCKET] Client connected: ${socket.id}`);
 
-    socket.on('stock-pending', ({ dropId }) => {
-      console.log(`[SOCKET] Received stock-pending -> Drop ID: ${dropId}`);
-      socket.broadcast.emit('stock-pending', { dropId });
-    });
-
     socket.on('disconnect', () => {
       console.log(`[SOCKET] Client disconnected: ${socket.id}`);
     });

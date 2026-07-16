@@ -24,17 +24,6 @@ async function getRecentBuyersForDrop(dropId: number): Promise<{ username: strin
   }));
 }
 
-async function getDropPendingStatus(dropId: number): Promise<'pending' | 'default'> {
-  const pendingCount = await Reservation.count({
-    where: {
-      drop_id: dropId,
-      status: 'PENDING',
-      expires_at: { [Op.gt]: new Date() }
-    }
-  });
-  return pendingCount > 0 ? 'pending' : 'default';
-}
-
 router.post('/reserve', async (req: Request, res: Response, next: NextFunction) => {
   const { userId, dropId } = req.body;
 
@@ -99,11 +88,10 @@ router.post('/reserve', async (req: Request, res: Response, next: NextFunction) 
     await transaction.commit();
     console.log(`[RESERVE][TX:${(transaction as any).id}] Transaction committed successfully.`);
 
-    const dropStatus = await getDropPendingStatus(Number(dropId));
     const recentBuyers = await getRecentBuyersForDrop(Number(dropId));
 
     // Broadcast updated stock count to all connected socket clients
-    broadcastStockUpdate(Number(dropId), drop.available_stock, dropStatus, recentBuyers);
+    broadcastStockUpdate(Number(dropId), drop.available_stock, 'default', recentBuyers);
 
     return res.status(201).json({
       success: true,
@@ -144,11 +132,10 @@ router.get('/drops', async (req: Request, res: Response) => {
     const drops = await Drop.findAll({ order: [['id', 'ASC']] });
     
     const dropsWithDetails = await Promise.all(drops.map(async (drop) => {
-      const dropStatus = await getDropPendingStatus(drop.id);
       const recentBuyers = await getRecentBuyersForDrop(drop.id);
       return {
         ...drop.toJSON(),
-        status: dropStatus,
+        status: 'default' as const,
         recentBuyers
       };
     }));
@@ -221,10 +208,9 @@ router.post('/purchase', async (req: Request, res: Response) => {
     // Fetch updated stock level, status, and recent buyers
     const drop = await Drop.findByPk(reservation.drop_id);
     const availableStock = drop ? drop.available_stock : 0;
-    const dropStatus = await getDropPendingStatus(reservation.drop_id);
     const recentBuyers = await getRecentBuyersForDrop(reservation.drop_id);
 
-    broadcastStockUpdate(reservation.drop_id, availableStock, dropStatus, recentBuyers);
+    broadcastStockUpdate(reservation.drop_id, availableStock, 'default', recentBuyers);
 
     return res.status(201).json({
       success: true,

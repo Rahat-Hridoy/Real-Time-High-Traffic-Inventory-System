@@ -74,23 +74,8 @@ export function useInventory(user: AppUser | null): UseInventoryReturn {
     []
   );
 
-  const handleStockPending = useCallback(
-    ({ dropId }: { dropId: number }) => {
-      setDrops(prev =>
-        prev.map(drop => {
-          if (drop.id === dropId) {
-            return { ...drop, status: 'pending' as const };
-          }
-          return drop;
-        })
-      );
-    },
-    []
-  );
-
-  const { connected: socketConnected, emitStockPending } = useSocket({
+  const { connected: socketConnected } = useSocket({
     onStockUpdate: handleStockUpdate,
-    onStockPending: handleStockPending,
   });
 
   // ── Data fetching ─────────────────────────────────────────────────────────
@@ -130,12 +115,6 @@ export function useInventory(user: AppUser | null): UseInventoryReturn {
     async (dropId: number) => {
       if (!user) { toast.error('Please sign in first.'); return; }
       
-      // Emit 'stock-pending' event via Socket.io instantly
-      emitStockPending(dropId);
-      
-      // Locally update drop to pending instantly
-      handleStockPending({ dropId });
-
       setReservingDropId(dropId);
       try {
         const data = await apiReserveDrop(user.id, dropId);
@@ -144,20 +123,11 @@ export function useInventory(user: AppUser | null): UseInventoryReturn {
         return data.reservation;
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : 'Reservation failed.', { duration: 4000 });
-        // Revert local pending if failed
-        setDrops(prev =>
-          prev.map(drop => {
-            if (drop.id === dropId) {
-              return { ...drop, status: 'default' as const };
-            }
-            return drop;
-          })
-        );
       } finally {
         setReservingDropId(null);
       }
     },
-    [user, emitStockPending, handleStockPending]
+    [user]
   );
 
   const purchase = useCallback(

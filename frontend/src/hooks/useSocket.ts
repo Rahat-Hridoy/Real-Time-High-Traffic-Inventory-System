@@ -16,12 +16,10 @@ interface StockUpdatePayload {
 
 interface UseSocketOptions {
   onStockUpdate: (payload: StockUpdatePayload) => void;
-  onStockPending: (payload: { dropId: number }) => void;
 }
 
-export function useSocket({ onStockUpdate, onStockPending }: UseSocketOptions): {
+export function useSocket({ onStockUpdate }: UseSocketOptions): {
   connected: boolean;
-  emitStockPending: (dropId: number) => void;
 } {
   const [connected, setConnected] = useState(false);
   const [socketInstance, setSocketInstance] = useState<Socket | null>(null);
@@ -45,22 +43,11 @@ export function useSocket({ onStockUpdate, onStockPending }: UseSocketOptions): 
       onStockUpdate(payload);
     });
 
-    socket.on('stock-pending', (payload: { dropId: number }) => {
-      console.log('[SOCKET] stock-pending →', payload);
-      onStockPending(payload);
-    });
-
     return () => {
       socket.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const emitStockPending = (dropId: number) => {
-    if (socketInstance) {
-      socketInstance.emit('stock-pending', { dropId });
-    }
-  };
-
-  return { connected, emitStockPending };
+  return { connected };
 }

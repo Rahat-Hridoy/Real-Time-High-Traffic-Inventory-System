@@ -76,8 +76,20 @@ export function useInventory(user: AppUser | null): UseInventoryReturn {
     []
   );
 
+  const handleRestock = useCallback(
+    ({ name }: { dropId: number; name: string }) => {
+      if (!user) return;
+      toast.success(`Item "${name}" is back in stock!`, {
+        icon: '👟',
+        duration: 4000,
+      });
+    },
+    [user]
+  );
+
   const { connected: socketConnected } = useSocket({
     onStockUpdate: handleStockUpdate,
+    onRestock: handleRestock,
   });
 
   // ── Data fetching ─────────────────────────────────────────────────────────

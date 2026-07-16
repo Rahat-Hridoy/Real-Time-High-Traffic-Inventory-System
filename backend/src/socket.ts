@@ -55,3 +55,16 @@ export function broadcastStockUpdate(
     console.warn('[SOCKET] Broadcast failed: Socket.io is not initialized.');
   }
 }
+
+/**
+ * Broadcasts a restock event to all connected clients.
+ */
+export function broadcastRestock(dropId: number, name: string): void {
+  if (io) {
+    console.log(`[SOCKET] Broadcasting restock -> Drop ID: ${dropId}, Name: ${name}`);
+    io.emit('restock', { dropId, name });
+  } else {
+    console.warn('[SOCKET] Broadcast failed: Socket.io is not initialized.');
+  }
+}
+

@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import sequelize from '../../config/db';
 import { Drop, Reservation, User, Purchase } from '../../models';
 import { Transaction, Op } from 'sequelize';
-import { broadcastStockUpdate } from '../socket';
+import { broadcastStockUpdate, broadcastRestock } from '../socket';
 
 const router = Router();
 
@@ -351,6 +351,7 @@ router.post('/cancel-reservation', async (req: Request, res: Response) => {
     const recentBuyers = await getRecentBuyersForDrop(reservation.drop_id);
 
     broadcastStockUpdate(reservation.drop_id, availableStock, 'default', recentBuyers);
+    broadcastRestock(reservation.drop_id, drop.name);
 
     return res.status(200).json({
       success: true,

@@ -1,7 +1,7 @@
 import sequelize from '../config/db';
 import { Reservation, Drop, User, Purchase } from '../models';
 import { Op, Transaction } from 'sequelize';
-import { broadcastStockUpdate } from './socket';
+import { broadcastStockUpdate, broadcastRestock } from './socket';
 
 /**
  * Recovers stock from expired pending reservations.
@@ -38,7 +38,7 @@ export async function recoverExpiredStock(): Promise<number[]> {
       recoveryCounts[res.drop_id] = (recoveryCounts[res.drop_id] || 0) + 1;
     }
 
-    const affectedDrops: { dropId: number; availableStock: number }[] = [];
+    const affectedDrops: { dropId: number; availableStock: number; name: string }[] = [];
 
     // 3. For each drop, lock the Drop row, increment the available stock, and save
     for (const [dropIdStr, count] of Object.entries(recoveryCounts)) {
@@ -60,7 +60,7 @@ export async function recoverExpiredStock(): Promise<number[]> {
       await drop.save({ transaction });
       
       console.log(`[RECOVERY][TX:${txId}] Recovered stock for Drop ID ${dropId}. Previous: ${previousStock}, New: ${drop.available_stock}`);
-      affectedDrops.push({ dropId, availableStock: drop.available_stock });
+      affectedDrops.push({ dropId, availableStock: drop.available_stock, name: drop.name });
     }
 
     // 4. Update status of the reservations to 'EXPIRED'
@@ -79,7 +79,7 @@ export async function recoverExpiredStock(): Promise<number[]> {
     console.log(`[RECOVERY][TX:${txId}] Stock recovery transaction committed successfully.`);
 
     // 6. Broadcast the new stock levels to socket clients after transaction commit
-    for (const { dropId, availableStock } of affectedDrops) {
+    for (const { dropId, availableStock, name } of affectedDrops) {
       const recentPurchases = await Purchase.findAll({
         where: { drop_id: dropId },
         order: [['created_at', 'DESC']],
@@ -97,6 +97,7 @@ export async function recoverExpiredStock(): Promise<number[]> {
       }));
 
       broadcastStockUpdate(dropId, availableStock, 'default', recentBuyers);
+      broadcastRestock(dropId, name);
     }
 
     return affectedDrops.map(d => d.dropId);

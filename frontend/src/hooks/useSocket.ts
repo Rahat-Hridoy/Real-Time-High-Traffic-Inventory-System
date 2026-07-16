@@ -16,9 +16,10 @@ interface StockUpdatePayload {
 
 interface UseSocketOptions {
   onStockUpdate: (payload: StockUpdatePayload) => void;
+  onRestock?: (payload: { dropId: number; name: string }) => void;
 }
 
-export function useSocket({ onStockUpdate }: UseSocketOptions): {
+export function useSocket({ onStockUpdate, onRestock }: UseSocketOptions): {
   connected: boolean;
 } {
   const [connected, setConnected] = useState(false);
@@ -41,6 +42,13 @@ export function useSocket({ onStockUpdate }: UseSocketOptions): {
     socket.on('stock_update', (payload: StockUpdatePayload) => {
       console.log('[SOCKET] stock_update →', payload);
       onStockUpdate(payload);
+    });
+
+    socket.on('restock', (payload: { dropId: number; name: string }) => {
+      console.log('[SOCKET] restock →', payload);
+      if (onRestock) {
+        onRestock(payload);
+      }
     });
 
     return () => {

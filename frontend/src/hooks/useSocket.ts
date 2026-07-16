@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
 import { BACKEND_URL } from '../constants';
 
 interface StockUpdatePayload {
@@ -23,11 +23,9 @@ export function useSocket({ onStockUpdate, onRestock }: UseSocketOptions): {
   connected: boolean;
 } {
   const [connected, setConnected] = useState(false);
-  const [socketInstance, setSocketInstance] = useState<Socket | null>(null);
 
   useEffect(() => {
     const socket = io(BACKEND_URL);
-    setSocketInstance(socket);
 
     socket.on('connect', () => {
       console.log('[SOCKET] Connected');

@@ -103,9 +103,12 @@ const ProductCard: React.FC<Props> = ({ drop, isReserving, hasPulse, onReserve }
         ) : (
           <button
             onClick={onReserve}
-            className="w-full bg-black text-white hover:bg-neutral-800 transition-colors rounded-xl py-3 px-4 text-xs font-bold mt-4 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform select-none cursor-pointer"
+            disabled={isReserving}
+            className={`w-full bg-black text-white hover:bg-neutral-800 transition-colors rounded-xl py-3 px-4 text-xs font-bold mt-4 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform select-none cursor-pointer ${
+              isReserving ? 'opacity-70 cursor-wait' : ''
+            }`}
           >
-            <span>Reserve</span>
+            <span>{isReserving ? 'Reserving...' : 'Reserve'}</span>
           </button>
         )}
 

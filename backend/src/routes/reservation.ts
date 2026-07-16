@@ -252,34 +252,28 @@ router.post('/users', async (req: Request, res: Response) => {
   }
 });
 
-// 4. GET /api/reservations - Fetch reservations for a user (respects RLS)
+// 4. GET /api/reservations - Fetch reservations for a user (scoped by user_id)
 router.get('/reservations', async (req: Request, res: Response) => {
   const { userId } = req.query;
   if (!userId) {
     return res.status(400).json({ error: 'INVALID_INPUT', message: 'userId query parameter is required.' });
   }
 
-  const transaction = await sequelize.transaction();
+  const parsedUserId = parseInt(userId as string, 10);
+  if (isNaN(parsedUserId)) {
+    return res.status(400).json({ error: 'INVALID_INPUT', message: 'userId must be a valid number.' });
+  }
+
   try {
-    // Set RLS context in session
-    await sequelize.query('SET LOCAL app.current_user_id = :userId', {
-      replacements: { userId: userId.toString() },
-      transaction,
-      logging: false
-    });
-
+    // Explicitly filter by user_id so each user only sees their own reservations
     const reservations = await Reservation.findAll({
+      where: { user_id: parsedUserId },
       order: [['id', 'DESC']],
-      transaction
     });
 
-    await transaction.commit();
     return res.json(reservations);
   } catch (error: any) {
     console.error('[GET_RESERVATIONS] Failed to fetch reservations:', error);
-    try {
-      await transaction.rollback();
-    } catch (e) {}
     return res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to fetch reservations.' });
   }
 });

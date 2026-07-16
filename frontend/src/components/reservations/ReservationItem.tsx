@@ -45,11 +45,8 @@ const ReservationItem: React.FC<Props> = ({ res, drops, isPurchasing, onPurchase
         </span>
       </div>
 
-      {/* ── Drop name & expiry ── */}
-      <p className="text-sm font-bold text-slate-800 truncate mb-0.5">{dropName}</p>
-      <p className="text-[11px] text-slate-450 mb-3">
-        Expires: {new Date(res.expires_at).toLocaleTimeString()}
-      </p>
+      {/* ── Drop name ── */}
+      <p className="text-sm font-bold text-slate-800 truncate mb-3">{dropName}</p>
 
       {/* ── PENDING: countdown + purchase button ── */}
       {res.status === 'PENDING' && (

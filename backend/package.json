@@ -2,10 +2,10 @@
   "name": "techzu-backend",
   "version": "1.0.0",
   "description": "High-concurrency inventory reservation backend",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "scripts": {
     "build": "rimraf dist && tsc",
-    "start": "node dist/index.js",
+    "start": "node dist/src/index.js",
     "dev": "tsx watch src/index.ts",
     "dev:test": "cross-env NODE_ENV=test tsx watch src/index.ts",
     "seed": "node dist/scripts/seed-sneaker.js",

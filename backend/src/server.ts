@@ -9,13 +9,14 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:4173',
-  process.env.FRONTEND_URL,
+  process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/$/, '') : null,
 ].filter(Boolean) as string[];
 
 app.use(cors({
   origin: (origin, callback) => {
+    const normalizedOrigin = origin ? origin.replace(/\/$/, '') : '';
     // Allow server-to-server calls (no origin) and whitelisted origins
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.includes(normalizedOrigin)) {
       callback(null, true);
     } else {
       callback(new Error(`CORS: origin ${origin} not allowed`));
